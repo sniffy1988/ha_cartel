@@ -6,5 +6,5 @@
   "documentation": "https://github.com/sniffy1988/ha_cartel",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/sniffy1988/ha_cartel/issues",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
