@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -12,14 +14,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api import CurrencyRate, OfficeRates
 from .const import (
     ATTR_API_DATE,
-    ATTR_BUY,
-    ATTR_BUY_OPT,
     ATTR_CITY,
     ATTR_CURRENCY,
     ATTR_CURRENCY_NAME,
     ATTR_OFFICE_ID,
-    ATTR_SELL,
-    ATTR_SELL_OPT,
+    ATTR_OPT,
+    ATTR_SIDE,
     ATTR_TO_CURRENCY,
     ATTR_TO_CURRENCY_NAME,
     CURRENCY_ICONS,
@@ -28,22 +28,58 @@ from .const import (
 )
 from .coordinator import HaCartelCoordinator
 
+SIDE_BUY = "buy"
+SIDE_SELL = "sell"
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up HA Cartel sensors from a config entry."""
+    """Set up HA Cartel buy/sell sensors from a config entry."""
     coordinator: HaCartelCoordinator = entry.runtime_data
-    async_add_entities(
-        HaCartelCurrencySensor(coordinator, rate)
-        for rate in coordinator.data.currencies
-    )
+    entities: list[HaCartelRateSensor] = []
+
+    for rate in coordinator.data.currencies:
+        if rate.buy is not None:
+            entities.append(
+                HaCartelRateSensor(
+                    coordinator, rate, SIDE_BUY, opt=False, value_fn=lambda r: r.buy
+                )
+            )
+        if rate.sell is not None:
+            entities.append(
+                HaCartelRateSensor(
+                    coordinator, rate, SIDE_SELL, opt=False, value_fn=lambda r: r.sell
+                )
+            )
+        if rate.buy_opt is not None:
+            entities.append(
+                HaCartelRateSensor(
+                    coordinator,
+                    rate,
+                    SIDE_BUY,
+                    opt=True,
+                    value_fn=lambda r: r.buy_opt,
+                )
+            )
+        if rate.sell_opt is not None:
+            entities.append(
+                HaCartelRateSensor(
+                    coordinator,
+                    rate,
+                    SIDE_SELL,
+                    opt=True,
+                    value_fn=lambda r: r.sell_opt,
+                )
+            )
+
+    async_add_entities(entities)
 
 
-class HaCartelCurrencySensor(CoordinatorEntity[HaCartelCoordinator], SensorEntity):
-    """One sensor per currency/pair with buy, sell, and opt attributes."""
+class HaCartelRateSensor(CoordinatorEntity[HaCartelCoordinator], SensorEntity):
+    """Buy or sell rate for one currency or cross pair."""
 
     _attr_has_entity_name = True
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -52,14 +88,26 @@ class HaCartelCurrencySensor(CoordinatorEntity[HaCartelCoordinator], SensorEntit
         self,
         coordinator: HaCartelCoordinator,
         rate: CurrencyRate,
+        side: str,
+        *,
+        opt: bool,
+        value_fn: Callable[[CurrencyRate], float | None],
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._currency = rate.currency
         self._to_currency = rate.to_currency
+        self._side = side
+        self._opt = opt
+        self._value_fn = value_fn
         office_id = coordinator.office_id
-        self._attr_unique_id = f"{DOMAIN}_{office_id}_{rate.key}"
-        self._attr_name = rate.label
+        suffix = f"{side}_opt" if opt else side
+        self._attr_unique_id = f"{DOMAIN}_{office_id}_{rate.key}_{suffix}"
+        side_label = "Buy" if side == SIDE_BUY else "Sell"
+        name = f"{rate.label} {side_label}"
+        if opt:
+            name = f"{name} Opt"
+        self._attr_name = name
         self._attr_native_unit_of_measurement = rate.to_currency or "UAH"
         self._attr_icon = CURRENCY_ICONS.get(
             rate.to_currency or rate.currency, "mdi:currency-usd"
@@ -85,28 +133,24 @@ class HaCartelCurrencySensor(CoordinatorEntity[HaCartelCoordinator], SensorEntit
 
     @property
     def native_value(self) -> float | None:
-        """Return primary rate (cash buy, else opt buy, else sell)."""
+        """Return this sensor's rate."""
         rate = self._current_rate()
-        return None if rate is None else rate.primary
+        if rate is None:
+            return None
+        return self._value_fn(rate)
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | int | float | None]:
-        """Expose buy/sell and opt values on one sensor."""
+    def extra_state_attributes(self) -> dict[str, str | int | bool | None]:
+        """Return extra attributes."""
         data = self.coordinator.data
-        rate = self._current_rate()
-        attrs: dict[str, str | int | float | None] = {
+        return {
             ATTR_CITY: data.city,
             ATTR_OFFICE_ID: data.office_id,
             ATTR_CURRENCY: self._currency,
             ATTR_CURRENCY_NAME: currency_name(self._currency),
             ATTR_TO_CURRENCY: self._to_currency,
             ATTR_TO_CURRENCY_NAME: currency_name(self._to_currency),
+            ATTR_SIDE: self._side,
+            ATTR_OPT: self._opt,
             ATTR_API_DATE: data.api_date,
         }
-        if rate is not None:
-            attrs[ATTR_BUY] = rate.buy
-            attrs[ATTR_SELL] = rate.sell
-            if rate.buy_opt is not None or rate.sell_opt is not None:
-                attrs[ATTR_BUY_OPT] = rate.buy_opt
-                attrs[ATTR_SELL_OPT] = rate.sell_opt
-        return attrs

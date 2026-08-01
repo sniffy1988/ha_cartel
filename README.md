@@ -1,6 +1,6 @@
 # HA Cartel
 
-Home Assistant custom integration that polls [Obmenka exchange rates](https://api.obmenka.dn.ua:5001/course?org=2) every hour and exposes one sensor per currency (or cross pair) for a selected city/office.
+Home Assistant custom integration that polls [Obmenka exchange rates](https://api.obmenka.dn.ua:5001/course?org=2) every hour and creates Buy/Sell sensors for a selected city/office.
 
 ## Install via HACS
 
@@ -14,18 +14,14 @@ You can add the integration multiple times for different offices.
 
 ## Sensors
 
-One sensor per `val` (and cross `val`/`to_val`), with multiple values as attributes:
+Home Assistant sensors have a single numeric state, so each rate is its own entity:
 
-| Sensor | State | Attributes |
-| --- | --- | --- |
-| **USD** | cash buy (fallback: opt buy) | `buy`, `sell`, and if present `buy_opt`, `sell_opt` |
-| **EUR** | same | same |
-| **EUR/USD** | cross buy | same for `ratesCross` / `ratesCrossOpt` |
-
-Example for office `59`:
-
-- `sensor.…_usd` → state `44.50`, attributes `buy=44.50`, `sell=45.05`, `buy_opt=44.65`, `sell_opt=45.05`
-- `sensor.…_eur_usd` → cross rates with buy/sell(/opt) attributes
+| Name | Source |
+| --- | --- |
+| **USD Buy** / **USD Sell** | cash (`rates`) |
+| **USD Buy Opt** / **USD Sell Opt** | cashless (`ratesOpt`), only when present |
+| **EUR/USD Buy** / **EUR/USD Sell** | cross (`ratesCross`) |
+| **EUR/USD Buy Opt** / … | cross cashless (`ratesCrossOpt`), only when present |
 
 FX-vs-UAH sensors use unit `UAH`. Cross-rate sensors use the quote currency (e.g. `USD`).
 

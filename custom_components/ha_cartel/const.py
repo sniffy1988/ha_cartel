@@ -60,10 +60,8 @@ ATTR_CURRENCY = "currency"
 ATTR_CURRENCY_NAME = "currency_name"
 ATTR_TO_CURRENCY = "to_currency"
 ATTR_TO_CURRENCY_NAME = "to_currency_name"
-ATTR_BUY = "buy"
-ATTR_SELL = "sell"
-ATTR_BUY_OPT = "buy_opt"
-ATTR_SELL_OPT = "sell_opt"
+ATTR_SIDE = "side"
+ATTR_OPT = "opt"
 ATTR_API_DATE = "api_date"
 
 
