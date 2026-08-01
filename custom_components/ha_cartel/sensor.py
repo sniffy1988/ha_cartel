@@ -6,7 +6,9 @@ from collections.abc import Callable
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -76,6 +78,16 @@ async def async_setup_entry(
             )
 
     async_add_entities(entities)
+
+    # Drop orphaned entities from older releases (e.g. single "USD" sensors).
+    registry = er.async_get(hass)
+    valid_unique_ids = {entity.unique_id for entity in entities}
+    for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if (
+            entity_entry.domain == Platform.SENSOR
+            and entity_entry.unique_id not in valid_unique_ids
+        ):
+            registry.async_remove(entity_entry.entity_id)
 
 
 class HaCartelRateSensor(CoordinatorEntity[HaCartelCoordinator], SensorEntity):
