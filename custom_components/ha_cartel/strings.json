@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select city",
+        "description": "Choose the city for Obmenka exchange rates.",
+        "data": {
+          "city": "City"
+        }
+      },
+      "office": {
+        "title": "Select office",
+        "description": "Choose the exchange office in {city}.",
+        "data": {
+          "office_id": "Office"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the Obmenka API. Try again later.",
+      "no_offices": "No offices were returned by the API.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This office is already configured.",
+      "cannot_connect": "Unable to connect to the Obmenka API.",
+      "no_offices": "No offices were returned by the API."
+    }
+  }
+}
