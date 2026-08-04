@@ -129,8 +129,13 @@ class HaCartelRateSensor(CoordinatorEntity[HaCartelCoordinator], SensorEntity):
             name=f"Obmenka {coordinator.data.city} ({office_id})",
             manufacturer="Obmenka",
             model="Exchange rates",
-            configuration_url="https://obmenka.dn.ua",
+            configuration_url="https://cartel.in.ua",
         )
+
+    @property
+    def available(self) -> bool:
+        """Keep last known rates visible if a later poll fails."""
+        return self.coordinator.data is not None and self.native_value is not None
 
     def _current_rate(self) -> CurrencyRate | None:
         """Find this currency in the latest coordinator data."""
