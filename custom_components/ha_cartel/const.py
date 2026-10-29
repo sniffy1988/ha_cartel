@@ -4,7 +4,11 @@ from datetime import timedelta
 
 DOMAIN = "ha_cartel"
 
-API_URL = "https://api.obmenka.dn.ua:5001/course?org=2"
+CARTEL_RATES_URL = "https://cartel.in.ua/includes/admin_content_funcs.php"
+
+DEFAULT_OFFICE_ID = 37
+DEFAULT_CITY = "Харьков"
+INTEGRATION_TITLE = "Cartel Kharkiv #1 (458-1)"
 
 UPDATE_INTERVAL = timedelta(hours=1)
 

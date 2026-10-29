@@ -126,8 +126,8 @@ class HaCartelRateSensor(CoordinatorEntity[HaCartelCoordinator], SensorEntity):
         )
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, str(office_id))},
-            name=f"Obmenka {coordinator.data.city} ({office_id})",
-            manufacturer="Obmenka",
+            name=f"Cartel {coordinator.data.city} ({office_id})",
+            manufacturer="Cartel",
             model="Exchange rates",
             configuration_url="https://cartel.in.ua",
         )

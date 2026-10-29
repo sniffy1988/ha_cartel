@@ -1,4 +1,4 @@
-"""API client for Obmenka course endpoint."""
+"""API client for Cartel.in.ua rates proxy (Obmenka course upstream)."""
 
 from __future__ import annotations
 
@@ -8,10 +8,16 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from aiohttp import ClientError, ClientResponseError, ClientSession, ClientTimeout
+from aiohttp import (
+    ClientError,
+    ClientResponseError,
+    ClientSession,
+    ClientTimeout,
+    FormData,
+)
 
 from .const import (
-    API_URL,
+    CARTEL_RATES_URL,
     RATE_TYPE_CASH,
     RATE_TYPE_CASHLESS,
     RATE_TYPE_CROSS_CASH,
@@ -28,7 +34,7 @@ FETCH_RETRY_DELAY = 2.0
 
 
 class HaCartelApiError(Exception):
-    """Raised when the Obmenka API request fails."""
+    """Raised when the Cartel rates request fails."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -292,12 +298,14 @@ def _format_request_error(err: BaseException) -> str:
     """Build a useful message even when str(err) is empty (e.g. TimeoutError)."""
     if isinstance(err, (TimeoutError, asyncio.TimeoutError)):
         return (
-            "Timed out reaching api.obmenka.dn.ua:5001 "
+            f"Timed out reaching {CARTEL_RATES_URL} "
             "(connection stalled or server slow; will retry)."
         )
     if isinstance(err, ClientResponseError):
         detail = (err.message or str(err) or "").strip()
-        return f"HTTP {err.status} from {API_URL}" + (f": {detail}" if detail else "")
+        return f"HTTP {err.status} from {CARTEL_RATES_URL}" + (
+            f": {detail}" if detail else ""
+        )
 
     text = str(err).strip()
     if not text:
@@ -311,46 +319,60 @@ def _format_request_error(err: BaseException) -> str:
     return text
 
 
+def _course_payload_from_bundle(bundle: Any) -> dict[str, Any]:
+    """Extract the Obmenka-shaped course object from a Cartel rates bundle."""
+    if not isinstance(bundle, dict) or not bundle.get("ok"):
+        raise HaCartelApiError("Cartel rates response was not ok")
+    course = bundle.get("course")
+    if not isinstance(course, dict) or course.get("result") != "OK":
+        raise HaCartelApiError("Unexpected course payload from Cartel proxy")
+    return course
+
+
 async def async_fetch_payload(session: ClientSession) -> dict[str, Any]:
-    """Fetch raw JSON payload from the Obmenka API (with short retries)."""
+    """Fetch course JSON via cartel.in.ua proxy (with short retries)."""
     headers = {
         "Accept": "application/json, */*",
         "Referer": "https://cartel.in.ua/",
         "Origin": "https://cartel.in.ua",
     }
+    form = FormData()
+    form.add_field("action", "get-rates")
     last_error: BaseException | None = None
 
     for attempt in range(1, FETCH_ATTEMPTS + 1):
         try:
-            async with session.get(
-                API_URL, headers=headers, timeout=REQUEST_TIMEOUT
+            async with session.post(
+                CARTEL_RATES_URL,
+                data=form,
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
             ) as response:
                 body = await response.text()
                 if response.status >= 400:
                     raise HaCartelApiError(
-                        f"HTTP {response.status} from {API_URL}: {body[:200]!r}"
+                        f"HTTP {response.status} from {CARTEL_RATES_URL}: "
+                        f"{body[:200]!r}"
                     )
                 try:
-                    payload = json.loads(body) if body else None
+                    bundle = json.loads(body) if body else None
                 except json.JSONDecodeError as err:
                     raise HaCartelApiError(
-                        f"Invalid JSON from API: {err}; body={body[:200]!r}"
+                        f"Invalid JSON from Cartel proxy: {err}; body={body[:200]!r}"
                     ) from err
         except HaCartelApiError as err:
             last_error = err
         except (ClientError, TimeoutError, asyncio.TimeoutError, ValueError) as err:
             last_error = err
             _LOGGER.debug(
-                "Obmenka fetch attempt %s/%s failed: %s: %s",
+                "Cartel rates fetch attempt %s/%s failed: %s: %s",
                 attempt,
                 FETCH_ATTEMPTS,
                 type(err).__name__,
                 _format_request_error(err),
             )
         else:
-            if not isinstance(payload, dict) or payload.get("result") != "OK":
-                raise HaCartelApiError("Unexpected API response")
-            return payload
+            return _course_payload_from_bundle(bundle)
 
         if attempt < FETCH_ATTEMPTS:
             await asyncio.sleep(FETCH_RETRY_DELAY)

@@ -2,29 +2,13 @@
   "config": {
     "step": {
       "user": {
-        "title": "Select city",
-        "description": "Choose the city for Obmenka exchange rates.",
-        "data": {
-          "city": "City"
-        }
-      },
-      "office": {
-        "title": "Select office",
-        "description": "Choose the exchange office in {city}.",
-        "data": {
-          "office_id": "Office"
-        }
+        "title": "Cartel Kharkiv #1",
+        "description": "Add exchange rate sensors for {office}. Submit to confirm."
       }
     },
-    "error": {
-      "cannot_connect": "Unable to connect to the Obmenka API. Try again later.",
-      "no_offices": "No offices were returned by the API.",
-      "unknown": "Unexpected error occurred."
-    },
     "abort": {
-      "already_configured": "This office is already configured.",
-      "cannot_connect": "Unable to connect to the Obmenka API.",
-      "no_offices": "No offices were returned by the API."
+      "already_configured": "Cartel Kharkiv is already configured.",
+      "cannot_connect": "Unable to fetch rates from cartel.in.ua."
     }
   }
 }

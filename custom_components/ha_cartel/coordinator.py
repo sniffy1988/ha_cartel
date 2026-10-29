@@ -20,7 +20,7 @@ RETRY_INTERVAL = timedelta(minutes=5)
 
 
 class HaCartelCoordinator(DataUpdateCoordinator[OfficeRates]):
-    """Coordinator that polls Obmenka rates hourly."""
+    """Coordinator that polls Cartel Kharkiv rates hourly."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize coordinator."""
